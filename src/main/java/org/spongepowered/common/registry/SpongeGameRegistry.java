@@ -208,6 +208,7 @@ import org.spongepowered.common.item.SpongeItemStackBuilder;
 import org.spongepowered.common.item.merchant.SpongeTradeOfferBuilder;
 import org.spongepowered.common.potion.SpongePotionBuilder;
 import org.spongepowered.common.rotation.SpongeRotation;
+import org.spongepowered.common.scoreboard.SpongeDisplaySlot;
 import org.spongepowered.common.status.SpongeFavicon;
 import org.spongepowered.common.text.SpongeTextFactory;
 import org.spongepowered.common.text.chat.SpongeChatType;
@@ -310,6 +311,7 @@ public abstract class SpongeGameRegistry implements GameRegistry {
     private final Map<String, WorldProperties> worldPropertiesNameMappings = Maps.newHashMap();
     private final Map<Integer, String> worldFolderDimensionIdMappings = Maps.newHashMap();
     public final Map<UUID, String> worldFolderUniqueIdMappings = Maps.newHashMap();
+    public final Map<String, SpongeDisplaySlot> displaySlotMappings = Maps.newHashMap();
 
     protected Map<Class<? extends CatalogType>, Map<String, ? extends CatalogType>> catalogTypeMap =
             ImmutableMap.<Class<? extends CatalogType>, Map<String, ? extends CatalogType>>builder()
@@ -326,6 +328,7 @@ public abstract class SpongeGameRegistry implements GameRegistry {
                     .put(DimensionType.class, this.dimensionTypeMappings)
                     .put(DirtType.class, ImmutableMap.<String, CatalogType>of()) // TODO
                     .put(DisguisedBlockType.class, ImmutableMap.<String, CatalogType>of()) // TODO
+                    .put(DisplaySlot.class, this.displaySlotMappings)
                     .put(Enchantment.class, this.enchantmentMappings)
                     .put(EquipmentType.class, ImmutableMap.<String, CatalogType>of()) // TODO
                     .put(FireworkShape.class, ImmutableMap.<String, CatalogType>of()) // TODO
@@ -1252,6 +1255,18 @@ public abstract class SpongeGameRegistry implements GameRegistry {
         RegistryHelper.mapFields(Difficulties.class, difficultyMappings);
     }
 
+    private void setDisplaySlots() {
+        this.displaySlotMappings.put("LIST", new SpongeDisplaySlot("LIST", null, 0));
+        this.displaySlotMappings.put("SIDEBAR", new SpongeDisplaySlot("SIDEBAR", null, 1));
+        this.displaySlotMappings.put("BELOW_NAME", new SpongeDisplaySlot("BELOW_NAME", null, 2));
+
+        for (Map.Entry<EnumChatFormatting, SpongeTextColor> entry: this.enumChatColor.entrySet()) {
+            this.displaySlotMappings.put(entry.getValue().getId(), new SpongeDisplaySlot(entry.getValue().getId(), entry.getValue(), entry.getKey().getColorIndex() + 3));
+        }
+
+        RegistryHelper.mapFields(TextColors.class, this.displaySlotMappings);
+    }
+
     private void setupSerialization() {
         Game game = Sponge.getGame();
         SerializationService service = game.getServiceManager().provide(SerializationService.class).get();
@@ -1357,6 +1372,7 @@ public abstract class SpongeGameRegistry implements GameRegistry {
         setGameModes();
         setSounds();
         setDifficulties();
+        setDisplaySlots();
     }
 
     public void postInit() {
