@@ -120,6 +120,7 @@ public abstract class MixinScoreObjective implements IMixinScoreObjective {
             if (scoreMap.containsKey(this) && ((IMixinScore) scoreMap.get(this)).spongeCreated()) {
                 throw new IllegalArgumentException("A score already exists with the name " + score.getName());
             }
+            ((IMixinScore) score).addToObjective((Objective) this);
             scoreMap.put((ScoreObjective) (Objective) this, (net.minecraft.scoreboard.Score) score);
         }
     }
@@ -155,11 +156,20 @@ public abstract class MixinScoreObjective implements IMixinScoreObjective {
         Scoreboard dummyScoreboard = this.scoreboards.isEmpty() ? this.scoreboards.iterator().next() : null;
         net.minecraft.scoreboard.Score score = new net.minecraft.scoreboard.Score(dummyScoreboard, (ScoreObjective) (Objective) this, Texts.toLegacy(name));
         ((IMixinScore) score).setSpongeCreated();
+        ((IMixinScore) score).addToObjective((Objective) this);
 
         for (Scoreboard scoreboard: unsetScoreboards) {
             ((Map) scoreboard.entitiesScoreObjectives.get(Texts.toLegacy(name))).put(this, score);
         }
         return (Score) (Object) (score);
+    }
+
+    public void objective$removeScore(Score spongeScore) {
+        for (Scoreboard scoreboard: this.scoreboards) {
+            Map<ScoreObjective, net.minecraft.scoreboard.Score> scoreMap = (Map) scoreboard.entitiesScoreObjectives.get(Texts.toLegacy(spongeScore.getName()));
+            net.minecraft.scoreboard.Score score = scoreMap.remove(this);
+            ((IMixinScore) score).removeFromObjective((Objective) this);
+        }
     }
 
     public Set<org.spongepowered.api.scoreboard.Scoreboard> objective$getScoreboards() {
@@ -176,8 +186,23 @@ public abstract class MixinScoreObjective implements IMixinScoreObjective {
 
         for (Map<ScoreObjective, net.minecraft.scoreboard.Score> scoreMap: (Collection<Map<ScoreObjective, net.minecraft.scoreboard.Score>>) scoreboard.entitiesScoreObjectives.values()) {
             net.minecraft.scoreboard.Score score = scoreMap.get(this);
-            if (score != null && !((IMixinScore) score).spongeCreated()) {
-                score.
+            if (score != null && score.theScoreboard == null) {
+                score.theScoreboard = scoreboard;
+            }
+        }
+    }
+
+    @Override
+    public void removeFromScoreboard(org.spongepowered.api.scoreboard.Scoreboard spongeScoreboard) {
+        Scoreboard scoreboard = (Scoreboard) spongeScoreboard;
+        this.scoreboards.remove(scoreboard);
+        Scoreboard newScoreboard = this.scoreboards.isEmpty() ? null : this.scoreboards.iterator().next();
+        this.theScoreboard = newScoreboard;
+
+        for (Map<ScoreObjective, net.minecraft.scoreboard.Score> scoreMap: (Collection<Map<ScoreObjective, net.minecraft.scoreboard.Score>>) scoreboard.entitiesScoreObjectives.values()) {
+            net.minecraft.scoreboard.Score score = scoreMap.get(this);
+            if (score != null && (score.theScoreboard == null || score.theScoreboard == scoreboard)) {
+                score.theScoreboard = newScoreboard;
             }
         }
     }
