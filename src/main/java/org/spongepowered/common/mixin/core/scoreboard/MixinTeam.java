@@ -1,7 +1,10 @@
 package org.spongepowered.common.mixin.core.scoreboard;
 
+import com.google.common.base.Optional;
 import net.minecraft.scoreboard.ScorePlayerTeam;
 import net.minecraft.util.EnumChatFormatting;
+import org.spongepowered.api.entity.player.Player;
+import org.spongepowered.api.entity.player.User;
 import org.spongepowered.api.scoreboard.Team;
 import org.spongepowered.api.scoreboard.Visibility;
 import org.spongepowered.api.text.Text;
@@ -19,6 +22,9 @@ import org.spongepowered.common.registry.SpongeGameRegistry;
 import org.spongepowered.common.scoreboard.SpongeVisibility;
 import org.spongepowered.common.text.format.SpongeTextColor;
 
+import java.util.HashSet;
+import java.util.Set;
+
 @NonnullByDefault
 @Mixin(ScorePlayerTeam.class)
 @Implements(@Interface(iface = Team.class, prefix = "team$"))
@@ -33,6 +39,7 @@ public abstract class MixinTeam {
     @Shadow public boolean canSeeFriendlyInvisibles;
     @Shadow public net.minecraft.scoreboard.Team.EnumVisible field_178778_i; // nameTagVisibility
     @Shadow public net.minecraft.scoreboard.Team.EnumVisible field_178776_j; // deathMessageVisiblity
+    @Shadow public Set<String> membershipSet;
 
     public String team$getName() {
         return this.registeredName;
@@ -115,4 +122,25 @@ public abstract class MixinTeam {
         this.field_178776_j = ((SpongeVisibility) visibility).getHandle();
     }
 
+    public Set<User> team$getUsers() {
+        // User isn't implemented yet, so only online players can be returned currenlly
+        Set<User> users = new HashSet<User>();
+        for (String name: this.membershipSet) {
+            Optional<Player> player = Sponge.getGame().getServer().getPlayer(name);
+            if (player.isPresent()) {
+                users.add(player.get());
+            } else {
+                // Well, we tried ¯\_(ツ)_/¯
+            }
+        }
+        return users;
+    }
+
+    public void team$addUser(User user) {
+        this.membershipSet.add(user.getName()); // hai
+    }
+
+    public boolean removeUser(User user) {
+        return this.membershipSet.remove(user.getName()); // bai
+    }
 }
