@@ -29,6 +29,7 @@ import static org.spongepowered.common.data.DataTransactionBuilder.builder;
 import com.flowpowered.math.vector.Vector2i;
 import com.flowpowered.math.vector.Vector3i;
 import com.google.common.base.Optional;
+import com.google.common.collect.Lists;
 import net.minecraft.util.BlockPos;
 import net.minecraft.world.ChunkCoordIntPair;
 import net.minecraft.world.World;
@@ -44,6 +45,7 @@ import org.spongepowered.api.util.annotation.NonnullByDefault;
 import org.spongepowered.api.util.gen.BiomeBuffer;
 import org.spongepowered.api.world.Chunk;
 import org.spongepowered.api.world.Location;
+import org.spongepowered.api.world.biome.BiomeType;
 import org.spongepowered.api.world.gen.GeneratorPopulator;
 import org.spongepowered.asm.mixin.Mixin;
 import org.spongepowered.asm.mixin.Shadow;
@@ -66,6 +68,10 @@ import java.util.List;
 public abstract class MixinChunk implements Chunk {
 
     private Vector3i chunkPos;
+    private Vector3i chunkMin;
+    private Vector3i chunkMax;
+    private Vector3i chunkSize;
+
     private ChunkCoordIntPair chunkCoordIntPair;
 
     @Shadow private net.minecraft.world.World worldObj;
@@ -77,6 +83,9 @@ public abstract class MixinChunk implements Chunk {
     @Inject(method = "<init>(Lnet/minecraft/world/World;II)V", at = @At("RETURN"), remap = false)
     public void onConstructed(World world, int x, int z, CallbackInfo ci) {
         this.chunkPos = new Vector3i(x, 0, z);
+        this.chunkMin = new Vector3i(x * 16, 0, z * 16);
+        this.chunkMax = new Vector3i(x * 16 + 15, 255, z * 16 + 15);
+        this.chunkSize = new Vector3i(16, 256, 16);
         this.chunkCoordIntPair = new ChunkCoordIntPair(x, z);
     }
 
@@ -89,13 +98,26 @@ public abstract class MixinChunk implements Chunk {
         // can be modified before light is calculated and that implementations
         // of IChunkProvider provided by mods will very likely still work well
 
-        List<GeneratorPopulator> populators = ((IMixinWorld) world).getGeneratorPopulators();
-        if (!populators.isEmpty()) {
-            FastChunkBuffer buffer = new FastChunkBuffer((net.minecraft.world.chunk.Chunk) (Object) this);
-            BiomeGenBase[] biomeArray = world.getWorldChunkManager().getBiomeGenAt(null, chunkX * 16, chunkZ * 16, 16, 16, true);
-            BiomeBuffer biomes = new ObjectArrayMutableBiomeArea(biomeArray, new Vector2i(chunkX * 16, chunkZ * 16), new Vector2i(16, 16));
+        List<GeneratorPopulator> genpop = ((IMixinWorld) world).getGeneratorPopulators();
+        List<GeneratorPopulator> biomegenpop = Lists.newArrayList();
 
-            for (GeneratorPopulator populator : populators) {
+        BiomeGenBase[] biomeArray = world.getWorldChunkManager().getBiomeGenAt(null, chunkX * 16, chunkZ * 16, 16, 16, true);
+        List<BiomeGenBase> encountered = Lists.newArrayList();
+        for (BiomeGenBase biome : biomeArray) {
+            if (encountered.contains(biome)) {
+                continue;
+            }
+            biomegenpop.addAll(((BiomeType) biome).getGeneratorPopulators());
+            encountered.add(biome);
+        }
+
+        if (!genpop.isEmpty() || !biomegenpop.isEmpty()) {
+            FastChunkBuffer buffer = new FastChunkBuffer((net.minecraft.world.chunk.Chunk) (Object) this);
+            BiomeBuffer biomes = new ObjectArrayMutableBiomeArea(biomeArray, new Vector2i(chunkX * 16, chunkZ * 16), new Vector2i(16, 16));
+            for (GeneratorPopulator populator : biomegenpop) {
+                populator.populate((org.spongepowered.api.world.World) world, buffer, biomes);
+            }
+            for (GeneratorPopulator populator : genpop) {
                 populator.populate((org.spongepowered.api.world.World) world, buffer, biomes);
             }
         }
@@ -210,5 +232,20 @@ public abstract class MixinChunk implements Chunk {
     	
     	return false;
     }
-    
+
+    @Override
+    public Vector3i getBlockMin() {
+        return this.chunkMin;
+    }
+
+    @Override
+    public Vector3i getBlockMax() {
+        return this.chunkMax;
+    }
+
+    @Override
+    public Vector3i getBlockSize() {
+        return this.chunkSize;
+    }
+
 }
