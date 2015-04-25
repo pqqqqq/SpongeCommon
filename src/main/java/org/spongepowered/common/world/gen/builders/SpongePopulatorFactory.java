@@ -80,14 +80,12 @@ public class SpongePopulatorFactory implements PopulatorFactory {
 
     @Override
     public Dungeon.Builder createDungeonPopulator() {
-        // TODO Auto-generated method stub
-        return null;
+        return new DungeonBuilder();
     }
 
     @Override
     public EnderCrystalPlatform.Builder createEnderCrystalPlatformPopulator() {
-        // TODO Auto-generated method stub
-        return null;
+        return new EnderCrystalPlatformBuilder();
     }
 
     @Override

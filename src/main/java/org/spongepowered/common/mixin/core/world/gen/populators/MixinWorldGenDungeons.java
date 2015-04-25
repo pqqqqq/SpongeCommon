@@ -24,49 +24,62 @@
  */
 package org.spongepowered.common.mixin.core.world.gen.populators;
 
-import net.minecraft.item.ItemStack;
+import org.spongepowered.common.interfaces.IWorldGenDungeons;
 
-import net.minecraft.util.WeightedRandomChestContent;
+import net.minecraft.tileentity.TileEntityMobSpawner;
 import com.flowpowered.math.vector.Vector3i;
+import net.minecraft.block.material.Material;
+import net.minecraft.init.Blocks;
+import net.minecraft.inventory.IInventory;
+import net.minecraft.tileentity.TileEntity;
+import net.minecraft.tileentity.TileEntityChest;
 import net.minecraft.util.BlockPos;
+import net.minecraft.util.EnumFacing;
+import net.minecraft.util.WeightedRandomChestContent;
 import net.minecraft.world.World;
 import net.minecraft.world.gen.feature.WorldGenDungeons;
-import net.minecraft.world.gen.feature.WorldGenerator;
+import org.spongepowered.api.block.tile.MobSpawner;
 import org.spongepowered.api.data.manipulators.MobSpawnerData;
+import org.spongepowered.api.item.inventory.ItemStack;
 import org.spongepowered.api.util.VariableAmount;
 import org.spongepowered.api.util.weighted.WeightedCollection;
 import org.spongepowered.api.util.weighted.WeightedItem;
 import org.spongepowered.api.world.Chunk;
 import org.spongepowered.api.world.gen.populators.Dungeon;
 import org.spongepowered.asm.mixin.Mixin;
+import org.spongepowered.asm.mixin.Overwrite;
 import org.spongepowered.asm.mixin.injection.At;
 import org.spongepowered.asm.mixin.injection.Inject;
 import org.spongepowered.asm.mixin.injection.callback.CallbackInfo;
 import org.spongepowered.common.Sponge;
+import org.spongepowered.common.util.weighted.WeightedEnchantmentBook;
 
+import java.util.Collection;
+import java.util.Iterator;
 import java.util.Random;
 
 @Mixin(WorldGenDungeons.class)
-public abstract class MixinWorldGenDungeons extends WorldGenerator implements Dungeon {
+public abstract class MixinWorldGenDungeons implements Dungeon, IWorldGenDungeons {
 
     private VariableAmount attempts;
+    private VariableAmount count;
     private MobSpawnerData data;
     private WeightedCollection<WeightedItem> items;
 
-    @Inject(method = "<init>(I)V", at = @At("RETURN"))
-    public void onConstructed(int type, CallbackInfo ci) {
+    @Inject(method = "<init>()V", at = @At("RETURN"))
+    public void onConstructed(CallbackInfo ci) {
         this.attempts = VariableAmount.fixed(8);
+        this.count = VariableAmount.fixed(8);
         this.data = Sponge.getSpongeRegistry().getManipulatorRegistry().getBuilder(MobSpawnerData.class).get().create();
         this.items = new WeightedCollection<WeightedItem>();
-    }
-
-    private void populateItemsFromVanilla() {
         for (WeightedRandomChestContent item : WorldGenDungeons.CHESTCONTENT) {
-            ItemStack stack = item.theItemId;
+            ItemStack stack = (ItemStack) item.theItemId;
             VariableAmount quantity =
                     VariableAmount.baseWithRandomAddition(item.theMinimumChanceToGenerateItem, item.theMaximumChanceToGenerateItem
                             - item.theMinimumChanceToGenerateItem + 1);
+            this.items.add(new WeightedItem(stack.getItem(), quantity, item.itemWeight, stack.getManipulators()));
         }
+        this.items.add(new WeightedEnchantmentBook(VariableAmount.fixed(1), 1));
     }
 
     @Override
@@ -87,6 +100,187 @@ public abstract class MixinWorldGenDungeons extends WorldGenerator implements Du
         }
     }
 
+    @Overwrite
+    public boolean generate(World worldIn, Random rand, BlockPos position)
+    {
+        // TODO cleanup
+        int i = rand.nextInt(2) + 2;
+        int j = -i - 1;
+        int k = i + 1;
+        int l = rand.nextInt(2) + 2;
+        int i1 = -l - 1;
+        int j1 = l + 1;
+        int k1 = 0;
+        int l1;
+        int i2;
+        int j2;
+        BlockPos blockpos1;
+
+        for (l1 = j; l1 <= k; ++l1)
+        {
+            for (i2 = -1; i2 <= 4; ++i2)
+            {
+                for (j2 = i1; j2 <= j1; ++j2)
+                {
+                    blockpos1 = position.add(l1, i2, j2);
+                    Material material = worldIn.getBlockState(blockpos1).getBlock().getMaterial();
+                    boolean flag3 = material.isSolid();
+
+                    if (i2 == -1 && !flag3)
+                    {
+                        return false;
+                    }
+
+                    if (i2 == 4 && !flag3)
+                    {
+                        return false;
+                    }
+
+                    if ((l1 == j || l1 == k || j2 == i1 || j2 == j1) && i2 == 0 && worldIn.isAirBlock(blockpos1)
+                            && worldIn.isAirBlock(blockpos1.up()))
+                    {
+                        ++k1;
+                    }
+                }
+            }
+        }
+
+        if (k1 >= 1 && k1 <= 5)
+        {
+            for (l1 = j; l1 <= k; ++l1)
+            {
+                for (i2 = 3; i2 >= -1; --i2)
+                {
+                    for (j2 = i1; j2 <= j1; ++j2)
+                    {
+                        blockpos1 = position.add(l1, i2, j2);
+
+                        if (l1 != j && i2 != -1 && j2 != i1 && l1 != k && i2 != 4 && j2 != j1)
+                        {
+                            if (worldIn.getBlockState(blockpos1).getBlock() != Blocks.chest)
+                            {
+                                worldIn.setBlockToAir(blockpos1);
+                            }
+                        }
+                        else if (blockpos1.getY() >= 0 && !worldIn.getBlockState(blockpos1.down()).getBlock().getMaterial().isSolid())
+                        {
+                            worldIn.setBlockToAir(blockpos1);
+                        }
+                        else if (worldIn.getBlockState(blockpos1).getBlock().getMaterial().isSolid()
+                                && worldIn.getBlockState(blockpos1).getBlock() != Blocks.chest)
+                        {
+                            if (i2 == -1 && rand.nextInt(4) != 0)
+                            {
+                                worldIn.setBlockState(blockpos1, Blocks.mossy_cobblestone.getDefaultState(), 2);
+                            }
+                            else
+                            {
+                                worldIn.setBlockState(blockpos1, Blocks.cobblestone.getDefaultState(), 2);
+                            }
+                        }
+                    }
+                }
+            }
+
+            l1 = 0;
+
+            while (l1 < 2)
+            {
+                i2 = 0;
+
+                while (true)
+                {
+                    if (i2 < 3)
+                    {
+                        label100:
+                        {
+                            j2 = position.getX() + rand.nextInt(i * 2 + 1) - i;
+                            int l2 = position.getY();
+                            int i3 = position.getZ() + rand.nextInt(l * 2 + 1) - l;
+                            BlockPos blockpos2 = new BlockPos(j2, l2, i3);
+
+                            if (worldIn.isAirBlock(blockpos2))
+                            {
+                                int k2 = 0;
+                                Iterator iterator = EnumFacing.Plane.HORIZONTAL.iterator();
+
+                                while (iterator.hasNext())
+                                {
+                                    EnumFacing enumfacing = (EnumFacing) iterator.next();
+
+                                    if (worldIn.getBlockState(blockpos2.offset(enumfacing)).getBlock().getMaterial().isSolid())
+                                    {
+                                        ++k2;
+                                    }
+                                }
+
+                                if (k2 == 1)
+                                {
+                                    worldIn.setBlockState(blockpos2, Blocks.chest.correctFacing(worldIn, blockpos2, Blocks.chest.getDefaultState()),
+                                            2);
+                                    TileEntity tileentity1 = worldIn.getTileEntity(blockpos2);
+                                    // BEGIN sponge
+                                    if (tileentity1 instanceof TileEntityChest)
+                                    {
+                                        fillChest((TileEntityChest) tileentity1, rand);
+                                    }
+//                                    List list = WeightedRandomChestContent.func_177629_a(CHESTCONTENT, new WeightedRandomChestContent[] {Items.enchanted_book.getRandom(rand)});
+//
+//                                    if (tileentity1 instanceof TileEntityChest)
+//                                    {
+//                                        WeightedRandomChestContent.generateChestContents(rand, list, (TileEntityChest)tileentity1, 8);
+//                                    }
+                                    // END sponge
+
+                                    break label100;
+                                }
+                            }
+
+                            ++i2;
+                            continue;
+                        }
+                    }
+
+                    ++l1;
+                    break;
+                }
+            }
+
+            worldIn.setBlockState(position, Blocks.mob_spawner.getDefaultState(), 2);
+            TileEntity tileentity = worldIn.getTileEntity(position);
+
+            // BEGIN sponge
+            if (tileentity instanceof MobSpawner) {
+                ((MobSpawner) tileentity).offer(this.data);
+            }
+
+//            if (tileentity instanceof TileEntityMobSpawner)
+//            {
+//                ((TileEntityMobSpawner) tileentity).getSpawnerBaseLogic().setEntityName(this.pickMobSpawner(rand));
+//            }
+//            else
+//            {
+//                field_175918_a.error("Failed to fetch mob spawner entity at (" + position.getX() + ", " + position.getY() + ", " + position.getZ()
+//                        + ")");
+//            }
+            // END sponge
+
+            return true;
+        }
+        return false;
+    }
+
+    private void fillChest(IInventory inv, Random rand) {
+        int n = Math.min(this.count.getFlooredAmount(rand), inv.getSizeInventory());
+        for (int i = 0; i < n;) {
+            WeightedItem item = this.items.get(rand);
+            Collection<ItemStack> items = item.getRandomItem(Sponge.getSpongeRegistry().getItemBuilder(), rand, n - i);
+            for (ItemStack stack : items) {
+                inv.setInventorySlotContents(i++, (net.minecraft.item.ItemStack) stack);
+            }
+        }
+    }
+
     @Override
     public VariableAmount getAttemptsPerChunk() {
         return this.attempts;
@@ -104,20 +298,22 @@ public abstract class MixinWorldGenDungeons extends WorldGenerator implements Du
 
     @Override
     public WeightedCollection<WeightedItem> getPossibleContents() {
-        // TODO Auto-generated method stub
-        return null;
+        return this.items;
     }
 
     @Override
     public VariableAmount getNumberOfItems() {
-        // TODO Auto-generated method stub
-        return null;
+        return this.count;
     }
 
     @Override
     public void setNumberOfItems(VariableAmount count) {
-        // TODO Auto-generated method stub
-
+        this.count = count;
+    }
+    
+    @Override
+    public void setSpawnerData(MobSpawnerData data) {
+        this.data = data;
     }
 
 }

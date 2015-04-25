@@ -63,7 +63,7 @@ public class MixinWorldGenDoublePlant implements DoublePlant {
         BlockPos chunkPos = new BlockPos(min.getX(), min.getY(), min.getZ());
         int x, z;
         int n = this.count.getFlooredAmount(random);
-        
+
         for (int i = 0; i < n; ++i)
         {
             x = random.nextInt(16) + 8;
@@ -77,21 +77,20 @@ public class MixinWorldGenDoublePlant implements DoublePlant {
     {
         boolean flag = false;
 
-//        for (int i = 0; i < 64; ++i)
-//        {
-//            BlockPos blockpos1 = position.add(rand.nextInt(8) - rand.nextInt(8), rand.nextInt(4) - rand.nextInt(4), rand.nextInt(8) - rand.nextInt(8));
-//
-//            if (worldIn.isAirBlock(blockpos1) && (!worldIn.provider.getHasNoSky() || blockpos1.getY() < 254) && Blocks.double_plant.canPlaceBlockAt(worldIn, blockpos1))
-//            {
-//                Blocks.double_plant.placeAt(worldIn, blockpos1, this.field_150549_a, 2);
-//                flag = true;
-//            }
-//        }
-        if (worldIn.isAirBlock(position) && (!worldIn.provider.getHasNoSky() || position.getY() < 254)
-                && Blocks.double_plant.canPlaceBlockAt(worldIn, position))
+        for (int i = 0; i < 64; ++i)
         {
-            Blocks.double_plant.placeAt(worldIn, position, (BlockDoublePlant.EnumPlantType) (Object) this.types.get(rand).get(), 2);
-            flag = true;
+            BlockPos blockpos1 =
+                    position.add(rand.nextInt(8) - rand.nextInt(8), rand.nextInt(4) - rand.nextInt(4), rand.nextInt(8) - rand.nextInt(8));
+
+            if (worldIn.isAirBlock(blockpos1) && (!worldIn.provider.getHasNoSky() || blockpos1.getY() < 254)
+                    && Blocks.double_plant.canPlaceBlockAt(worldIn, blockpos1))
+            {
+                // BEGIN sponge
+//                Blocks.double_plant.placeAt(worldIn, blockpos1, this.field_150549_a, 2);
+                Blocks.double_plant.placeAt(worldIn, position, (BlockDoublePlant.EnumPlantType) (Object) this.types.get(rand).get(), 2);
+                // END sponge
+                flag = true;
+            }
         }
 
         return flag;
