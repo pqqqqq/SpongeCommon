@@ -100,7 +100,7 @@ public class DungeonBuilder implements Dungeon.Builder {
     public Builder possibleEntities(WeightedEntity... entities) {
         this.data.getPossibleEntitiesToSpawn().clear();
         for (WeightedEntity entity : entities) {
-            if (entity != null) {
+            if (entity != null && entity.get() != null) {
                 this.data.getPossibleEntitiesToSpawn().add(entity);
             }
         }
@@ -111,7 +111,7 @@ public class DungeonBuilder implements Dungeon.Builder {
     public Builder possibleEntities(Collection<WeightedEntity> entities) {
         this.data.getPossibleEntitiesToSpawn().clear();
         for (WeightedEntity entity : entities) {
-            if (entity != null) {
+            if (entity != null && entity.get() != null) {
                 this.data.getPossibleEntitiesToSpawn().add(entity);
             }
         }
@@ -122,7 +122,7 @@ public class DungeonBuilder implements Dungeon.Builder {
     public Builder possibleItems(WeightedItem... items) {
         this.items.clear();
         for (WeightedItem item : items) {
-            if (item != null) {
+            if (item != null && item.get() != null) {
                 this.items.add(item);
             }
         }
@@ -133,7 +133,7 @@ public class DungeonBuilder implements Dungeon.Builder {
     public Builder possibleItems(Collection<WeightedItem> items) {
         this.items.clear();
         for (WeightedItem item : items) {
-            if (item != null) {
+            if (item != null && item.get() != null) {
                 this.items.add(item);
             }
         }
